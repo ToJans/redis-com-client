@@ -34,7 +34,7 @@ namespace redis_com_client
         public void RemoveAll()
         {
             _cacheFactory.UseAdminConnection = true;
-            foreach(var server in _cacheFactory.Servers)
+            foreach (var server in _cacheFactory.Servers)
             {
                 foreach (var key in server.Keys(pattern: _storePrefix + "*"))
                 {
@@ -53,7 +53,7 @@ namespace redis_com_client
             if (this.IsExtendingLifeTimeUponGet)
             {
                 var tx = _cacheFactory.Instance.CreateTransaction();
-                tx.KeyExpireAsync(key, this.DefaultLifeTime);
+                tx.KeyExpireAsync(fullKey, this.DefaultLifeTime);
                 var pairTask = tx.StringGetAsync(fullKey);
                 tx.Execute();
                 pair = pairTask.Result;
@@ -62,19 +62,21 @@ namespace redis_com_client
             {
                 pair = _cacheFactory.Instance.StringGet(fullKey);
             }
-             
+
 
             if (string.IsNullOrEmpty(pair))
                 return null;
 
             if (!pair.Contains("ArrayCollumn"))
                 return pair;
-                
+
             var table = JsonConvert.DeserializeObject<MyTable>(pair);
-            try { 
+            try
+            {
                 return (object[,])table.GetArray();
             }
-            catch (Exception) { 
+            catch (Exception)
+            {
                 return (object[])table.GetArray();
             }
         }
@@ -115,7 +117,7 @@ namespace redis_com_client
                 }
             }
 
-            if (LifeTime.TotalMilliseconds > 0 )
+            if (LifeTime.TotalMilliseconds > 0)
             {
                 _cacheFactory.Instance.StringSet(fullKey, (string)valueToAdd, LifeTime);
             }

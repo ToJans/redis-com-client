@@ -12,58 +12,51 @@ namespace redis_com_client_test
     public class BasicTest
     {
 
-        private CacheManager _manager;
+        private CacheManager SUT;
 
         [TestInitialize]
         public void Initialize()
         {
-            _manager = new CacheManager();
-            _manager.Init("test1");
+            SUT = new CacheManager();
+            SUT.Init("test1");
         }
 
+        [TestCleanup]
+        public void Cleanup()
+        {
+            SUT.RemoveAll();
+        }
 
         [TestMethod]
         public void Add()
         {
-            _manager.Add("key1", "abcde");
+            SUT.Add("key1", "abcde");
 
-            Assert.AreEqual("abcde", _manager.Get("key1"));
+            Assert.AreEqual("abcde", SUT.Get("key1"));
         }
-
-        //[TestMethod]
-        //public void SetExpiration()
-        //{
-        //    var wait = 5000;
-        //    var expiredValue = DateTime.Now;
-        //    _manager.SetExpiration("expired", expiredValue, wait);
-        //
-        //    Assert.AreEqual(expiredValue.ToString(), _manager.Get("expired"));
-        //    Thread.Sleep(wait + 100);
-        //    Assert.IsNull(_manager.Get("expired"));
-        //}
 
         [TestMethod]
         public void GetByObject()
         {
-            _manager.Add("dk", "123");
-            Assert.AreEqual("123", _manager["dk"]);
+            SUT.Add("dk", "123");
+            Assert.AreEqual("123", SUT["dk"]);
         }
 
         [TestMethod]
         public void SetByObject()
         {
-            _manager["dk"] = "123";
-            Assert.AreEqual("123", _manager["dk"]);
+            SUT["dk"] = "123";
+            Assert.AreEqual("123", SUT["dk"]);
         }
 
         [TestMethod]
         public void Array()
         {
-            var array = new object[,] {{1, 2, 3}, { "a", "b", "c" }, { "aa", "bb", "cc" } };
+            var array = new object[,] { { 1, 2, 3 }, { "a", "b", "c" }, { "aa", "bb", "cc" } };
 
-            _manager["arraytest"] = array;
+            SUT["arraytest"] = array;
 
-            var x = (object[,])_manager["arraytest"];
+            var x = (object[,])SUT["arraytest"];
             Assert.AreEqual(int.Parse("1"), x[0, 0]); //It guarantees int32 to VBScropt compability.
         }
 
@@ -73,9 +66,9 @@ namespace redis_com_client_test
             var specialChar = "#$%ˆ@";
             var array = new object[,] { { 1, 2, 3 }, { specialChar, "b", "c" } };
 
-            _manager["arraytest"] = array;
+            SUT["arraytest"] = array;
 
-            var x = (object[,])_manager["arraytest"];
+            var x = (object[,])SUT["arraytest"];
             Assert.AreEqual(specialChar, x[1, 0]);
         }
 
@@ -85,86 +78,88 @@ namespace redis_com_client_test
             var html = "<script>alert();</script>";
             var array = new object[,] { { 1, 2, 3 }, { html, "b", "c" } };
 
-            _manager["arraytest"] = array;
+            SUT["arraytest"] = array;
 
-            var x = (object[,])_manager["arraytest"];
+            var x = (object[,])SUT["arraytest"];
             Assert.AreEqual(html, x[1, 0]);
         }
 
         [TestMethod]
         public void RemoveAllFromThisKey()
         {
-            var manager2 = new CacheManager();
-            manager2.Init("test2");
-            manager2.Add("firstname", "22222");
-            manager2.Add("lastname", "33333");
+            var AnotherSUT = new CacheManager();
+            AnotherSUT.Init("test2");
+            AnotherSUT.Add("firstname", "22222");
+            AnotherSUT.Add("lastname", "33333");
 
-            _manager.Add("firstname", "firstname123");
-            _manager.Add("lastname", "lastname123");
-            _manager.RemoveAll();
+            SUT.Add("firstname", "firstname123");
+            SUT.Add("lastname", "lastname123");
+            SUT.RemoveAll();
 
-            Assert.IsNull(_manager["firstname"]);
-            Assert.IsNull(_manager["lastname"]);
-            Assert.IsNotNull(manager2["firstname"]);
-            Assert.IsNotNull(manager2["lastname"]);
+            Assert.IsNull(SUT["firstname"]);
+            Assert.IsNull(SUT["lastname"]);
+            Assert.IsNotNull(AnotherSUT["firstname"]);
+            Assert.IsNotNull(AnotherSUT["lastname"]);
+
+            AnotherSUT.RemoveAll();
         }
 
         [TestMethod]
         public void Exists()
         {
-            _manager.Add("exists", "12344");
-            Assert.IsTrue(_manager.Exists("exists"));
+            SUT.Add("exists", "12344");
+            Assert.IsTrue(SUT.Exists("exists"));
         }
 
         [TestMethod]
         public void NotExists()
         {
-            Assert.IsFalse(_manager.Exists("notexists"));
+            Assert.IsFalse(SUT.Exists("notexists"));
         }
 
         [TestMethod]
         public void Remove()
         {
-            _manager.Add("onekey", "12344");
-            _manager.Remove("onekey");
-            Assert.IsFalse(_manager.Exists("onekey"));
+            SUT.Add("onekey", "12344");
+            SUT.Remove("onekey");
+            Assert.IsFalse(SUT.Exists("onekey"));
         }
 
         [TestMethod]
         public void SetExpirationExistingKey()
         {
-            _manager.Add("key4", "12344");
-            Assert.IsTrue(_manager.Exists("key4"));
-            _manager.SetExpiration("key4",TimeSpan.FromSeconds(1));
+            SUT.Add("key4", "12344");
+            Assert.IsTrue(SUT.Exists("key4"));
+            SUT.SetExpiration("key4", TimeSpan.FromSeconds(1));
             Thread.Sleep(2000);
-            Assert.IsNull(_manager["key4"]);
+            Assert.IsNull(SUT["key4"]);
         }
 
         [TestMethod]
         public void AddNullValue()
         {
-            _manager.Add("null", null);
-            Assert.IsTrue(_manager.Exists("null"));
+            SUT.Add("null", null);
+            Assert.IsTrue(SUT.Exists("null"));
         }
 
         [TestMethod]
         public void ReplaceDbNull()
         {
-            var array = new object[,] {{10, 20}, {"asdf", DBNull.Value}};
-            _manager["DBNull"] = array;
+            var array = new object[,] { { 10, 20 }, { "asdf", DBNull.Value } };
+            SUT["DBNull"] = array;
 
-            var result = (object[,])_manager["DBNull"];
+            var result = (object[,])SUT["DBNull"];
             Assert.IsNotNull(result);
-            Assert.IsNull(result[1,1]);
+            Assert.IsNull(result[1, 1]);
         }
 
         [TestMethod]
         public void AddSameKeyTwice()
         {
-            _manager["twice"] = 1;
+            SUT["twice"] = 1;
             Thread.Sleep(500);
-            _manager["twice"] = "asdf";
-            Assert.AreEqual("asdf", _manager["twice"]);
+            SUT["twice"] = "asdf";
+            Assert.AreEqual("asdf", SUT["twice"]);
         }
 
         [TestMethod]
@@ -172,15 +167,15 @@ namespace redis_com_client_test
         {
             ArrayHtml();
             var sb = new StringBuilder();
-            Parallel.For((long) 0, 1000, i =>
-            {
-                sb.AppendFormat("i: {0}{1}", i, Environment.NewLine);
-                var sw = new Stopwatch();
-                sw.Start();
-                object x = _manager["arraytest"];
-                sw.Stop();
-                sb.AppendFormat("i: {0} - time: {1}ms", i, sw.ElapsedMilliseconds);
-            });
+            Parallel.For((long)0, 1000, i =>
+           {
+               sb.AppendFormat("i: {0}{1}", i, Environment.NewLine);
+               var sw = new Stopwatch();
+               sw.Start();
+               object x = SUT["arraytest"];
+               sw.Stop();
+               sb.AppendFormat("i: {0} - time: {1}ms", i, sw.ElapsedMilliseconds);
+           });
             Console.WriteLine(sb);
         }
 
@@ -190,7 +185,7 @@ namespace redis_com_client_test
             var array = new object[,] { { 1, 2, 3 }, { "a", "b", "c" } };
             var table = new MyTable(array);
 
-            var newArray  = (object[,])table.GetArray();
+            var newArray = (object[,])table.GetArray();
             Assert.AreEqual(array[0, 0], newArray[0, 0]);
             Assert.AreEqual(array[1, 1], newArray[1, 1]);
         }
@@ -198,13 +193,62 @@ namespace redis_com_client_test
         [TestMethod]
         public void MyTableOneDim()
         {
-            var array = new object[] { 1, 2, 3 } ;
+            var array = new object[] { 1, 2, 3 };
             var table = new MyTable(array);
 
             var newArray = (object[])table.GetArray();
             Assert.AreEqual(array[0], newArray[0]);
             Assert.AreEqual(array[1], newArray[1]);
             Assert.AreEqual(array[2], newArray[2]);
+        }
+
+        [TestMethod]
+        public void KeyExpiresAfterDefaultLifeTime()
+        {
+            var key = "abc";
+            var value = "someval";
+
+            SUT.DefaultLifeTime = TimeSpan.FromSeconds(1);
+
+            SUT[key] = value;
+
+            var cachedValue = SUT[key];
+            Assert.AreEqual(value, cachedValue);
+
+            Thread.Sleep(SUT.DefaultLifeTime + TimeSpan.FromSeconds(1));
+
+            cachedValue = SUT[key];
+            Assert.IsNull(cachedValue);
+        }
+
+        [TestMethod]
+        public void KeyLifeTimeExtendsAfterGet()
+        {
+            var key = "abc";
+            var value = "someval";
+            var LifeTime = TimeSpan.FromSeconds(1);
+            var SmallerThanLifeTime = LifeTime - TimeSpan.FromSeconds(1);
+            var LargertThanLifeTime = LifeTime + TimeSpan.FromSeconds(1);
+
+            SUT.DefaultLifeTime = LifeTime;
+
+            SUT[key] = value;
+
+            object cachedValue;
+
+            // extend lifetime 3 times
+            for (var i = 0; i < 3; i++)
+            {
+                Thread.Sleep(SmallerThanLifeTime);
+
+                cachedValue = SUT[key];
+                Assert.AreEqual(value, cachedValue);
+            }
+
+            Thread.Sleep(LargertThanLifeTime);
+
+            cachedValue = SUT[key];
+            Assert.IsNull(cachedValue);
         }
     }
 }
