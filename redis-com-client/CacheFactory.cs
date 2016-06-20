@@ -1,31 +1,67 @@
 ﻿using StackExchange.Redis;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace redis_com_client
 {
     public class CacheFactory
     {
-        private static ConnectionMultiplexer _redisClientsManager;
-
-
-        private CacheFactory()
+        public CacheFactory()
         {
-            
         }
 
-        public static IDatabase GetInstance()
-        {
-            if (_redisClientsManager == null)
-                _redisClientsManager = ConnectionMultiplexer.Connect("localhost");
+        private bool _useAdminConnection = false;
 
-            return _redisClientsManager.GetDatabase();
+        public bool UseAdminConnection
+        {
+            get
+            {
+                return _useAdminConnection;
+            }
+            set
+            {
+                _useAdminConnection = value;
+                _connectionMultiplexer = null;
+            }
         }
 
-        public static IServer GetServer()
+        public IDatabase Instance
         {
-            if (_redisClientsManager == null)
-                _redisClientsManager = ConnectionMultiplexer.Connect("localhost");
+            get
+            {
+                return GetConnectionMultiplexer().GetDatabase();
+            }
+        }
 
-            return _redisClientsManager.GetServer("localhost", 6379);
+        public IEnumerable<IServer> Servers
+        {
+            get
+            {
+                return GetConnectionMultiplexer().GetEndPoints().Select(x => _connectionMultiplexer.GetServer(x));
+            }
+        }
+
+        private static object _lockObject = new object();
+
+        private static ConnectionMultiplexer _connectionMultiplexer;
+
+        private ConnectionMultiplexer GetConnectionMultiplexer()
+        {
+            if (_connectionMultiplexer == null)
+            {
+                var connectionString = System.Environment.GetEnvironmentVariable("RES_REDIS_CONNECTION") ?? "localhost";
+                if (_useAdminConnection)
+                {
+                    connectionString += ",allowAdmin=true";
+                }
+                lock (_lockObject)
+                {
+                    _connectionMultiplexer =
+                        _connectionMultiplexer ??
+                        ConnectionMultiplexer.Connect(connectionString);
+                }
+            }
+            return _connectionMultiplexer;
         }
     }
 }

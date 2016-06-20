@@ -2,7 +2,6 @@
 using System.EnterpriseServices;
 using System.Runtime.InteropServices;
 using Newtonsoft.Json;
-using StackExchange.Redis;
 
 namespace redis_com_client
 {
@@ -17,21 +16,32 @@ namespace redis_com_client
 
         public TimeSpan DefaultLifeTime { get; set; } = TimeSpan.FromMinutes(15);
 
-        public bool IsExtendingLifeTimeUponGet { get; set; } = true; 
+        public bool IsExtendingLifeTimeUponGet { get; set; } = true;
+
+        private readonly CacheFactory _cacheFactory;
 
         public CacheManager()
         {
+            _cacheFactory = new CacheFactory();
         }
+
 
         public void SetExpiration(string key, TimeSpan lifeTime)
         {
-            CacheFactory.GetInstance().KeyExpire(GenerateFullKey(key), lifeTime);
+            _cacheFactory.Instance.KeyExpire(GenerateFullKey(key), lifeTime);
         }
 
         public void RemoveAll()
         {
-            var mask = $"{_storePrefix}*";
-            CacheFactory.GetInstance().ScriptEvaluate("local keys = redis.call('keys', ARGV[1]) for i=1,#keys,5000 do redis.call('del', unpack(keys, i, math.min(i+4999, #keys))) end return keys", null, new RedisValue[] { mask });
+            _cacheFactory.UseAdminConnection = true;
+            foreach(var server in _cacheFactory.Servers)
+            {
+                foreach (var key in server.Keys(pattern: _storePrefix + "*"))
+                {
+                    _cacheFactory.Instance.KeyDelete(key);
+                }
+            }
+            _cacheFactory.UseAdminConnection = false;
         }
 
         public object Get(string key)
@@ -42,7 +52,7 @@ namespace redis_com_client
 
             if (this.IsExtendingLifeTimeUponGet)
             {
-                var tx = CacheFactory.GetInstance().CreateTransaction();
+                var tx = _cacheFactory.Instance.CreateTransaction();
                 tx.KeyExpireAsync(key, this.DefaultLifeTime);
                 var pairTask = tx.StringGetAsync(fullKey);
                 tx.Execute();
@@ -50,7 +60,7 @@ namespace redis_com_client
             }
             else
             {
-                pair = CacheFactory.GetInstance().StringGet(fullKey);
+                pair = _cacheFactory.Instance.StringGet(fullKey);
             }
              
 
@@ -107,11 +117,11 @@ namespace redis_com_client
 
             if (LifeTime.TotalMilliseconds > 0 )
             {
-                CacheFactory.GetInstance().StringSet(fullKey, (string)valueToAdd, LifeTime);
+                _cacheFactory.Instance.StringSet(fullKey, (string)valueToAdd, LifeTime);
             }
             else
             {
-                CacheFactory.GetInstance().StringSet(fullKey, (string)valueToAdd);
+                _cacheFactory.Instance.StringSet(fullKey, (string)valueToAdd);
             }
         }
 
@@ -136,12 +146,12 @@ namespace redis_com_client
 
         public void Remove(string key)
         {
-            CacheFactory.GetInstance().KeyDelete(GenerateFullKey(key));
+            _cacheFactory.Instance.KeyDelete(GenerateFullKey(key));
         }
 
         public bool Exists(string key)
         {
-            return CacheFactory.GetInstance().KeyExists(GenerateFullKey(key));
+            return _cacheFactory.Instance.KeyExists(GenerateFullKey(key));
         }
     }
 }
