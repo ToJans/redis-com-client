@@ -49,7 +49,7 @@ namespace redis_com_client
         {
             if (_connectionMultiplexer == null)
             {
-                var connectionString = System.Environment.GetEnvironmentVariable("RES_REDIS_CONNECTION") ?? "localhost";
+                var connectionString = System.Environment.GetEnvironmentVariable("REDIS_CONNECTION") ?? "localhost";
                 if (_useAdminConnection)
                 {
                     connectionString += ",allowAdmin=true";
