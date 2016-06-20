@@ -135,7 +135,7 @@ namespace redis_com_client_test
         {
             _manager.Add("key4", "12344");
             Assert.IsTrue(_manager.Exists("key4"));
-            _manager.SetExpiration("key4",1000);
+            _manager.SetExpiration("key4",TimeSpan.FromSeconds(1));
             Thread.Sleep(2000);
             Assert.IsNull(_manager["key4"]);
         }

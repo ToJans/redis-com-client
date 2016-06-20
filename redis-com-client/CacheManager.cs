@@ -7,7 +7,7 @@ using StackExchange.Redis;
 namespace redis_com_client
 {
     [ComVisible(true)]
-    [Guid("6e8c90dd-15b6-4ee9-83c1-f294d6dca2a8")]
+    [Guid("F9BC3566-FD7D-40E5-8DAA-61CBB179DE05")]
     [ClassInterface(ClassInterfaceType.None)]
     [ProgId("CacheManager")]
     [Synchronization(SynchronizationOption.Disabled)]
@@ -15,13 +15,17 @@ namespace redis_com_client
     {
         private string _storePrefix;
 
+        public TimeSpan DefaultLifeTime { get; set; } = TimeSpan.FromMinutes(15);
+
+        public bool IsExtendingLifeTimeUponGet { get; set; } = true; 
+
         public CacheManager()
         {
         }
 
-        public void SetExpiration(string key, int milliseconds)
+        public void SetExpiration(string key, TimeSpan lifeTime)
         {
-            CacheFactory.GetInstance().KeyExpire(GenerateFullKey(key), TimeSpan.FromMilliseconds(milliseconds));
+            CacheFactory.GetInstance().KeyExpire(GenerateFullKey(key), lifeTime);
         }
 
         public void RemoveAll()
@@ -33,7 +37,22 @@ namespace redis_com_client
         public object Get(string key)
         {
             var fullKey = GenerateFullKey(key);
-            string pair = CacheFactory.GetInstance().StringGet(fullKey);
+
+            string pair = null;
+
+            if (this.IsExtendingLifeTimeUponGet)
+            {
+                var tx = CacheFactory.GetInstance().CreateTransaction();
+                tx.KeyExpireAsync(key, this.DefaultLifeTime);
+                var pairTask = tx.StringGetAsync(fullKey);
+                tx.Execute();
+                pair = pairTask.Result;
+            }
+            else
+            {
+                pair = CacheFactory.GetInstance().StringGet(fullKey);
+            }
+             
 
             if (string.IsNullOrEmpty(pair))
                 return null;
@@ -53,10 +72,10 @@ namespace redis_com_client
 
         public void Add(string key, object value)
         {
-            Add(key, value, 0);
+            Add(key, value, DefaultLifeTime);
         }
 
-        private void Add(string key, object value, int millisecondsToExpire)
+        private void Add(string key, object value, TimeSpan LifeTime)
         {
             object valueToAdd = value?.ToString() ?? string.Empty;
             var fullKey = GenerateFullKey(key);
@@ -86,9 +105,9 @@ namespace redis_com_client
                 }
             }
 
-            if (millisecondsToExpire > 0)
+            if (LifeTime.TotalMilliseconds > 0 )
             {
-                CacheFactory.GetInstance().StringSet(fullKey, (string)valueToAdd, TimeSpan.FromMilliseconds(millisecondsToExpire));
+                CacheFactory.GetInstance().StringSet(fullKey, (string)valueToAdd, LifeTime);
             }
             else
             {

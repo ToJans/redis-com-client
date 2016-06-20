@@ -1,9 +1,10 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Runtime.InteropServices;
 
 namespace redis_com_client
 {
     [ComVisible(true)]
-    [Guid("c8109c73-2528-4e90-a999-81abd1fc7a70")]
+    [Guid("A64CEB93-6462-487F-8503-D7D891D14687")]
     [InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
     public interface ICacheManager
     {
@@ -12,8 +13,10 @@ namespace redis_com_client
         void RemoveAll();
         object this[string key] { get; set; }
         void Init(string cacheId);
-		void Remove(string key);
+        void Remove(string key);
         bool Exists(string key);
-        void SetExpiration(string key, int milliseconds);
+        void SetExpiration(string key, TimeSpan lifeTime);
+        TimeSpan DefaultLifeTime { get; set; }
+        bool IsExtendingLifeTimeUponGet { get; set; }
     }
 }
